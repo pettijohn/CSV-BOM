@@ -171,10 +171,6 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
     def __init__(self):
         super().__init__()
 
-    def replacePointDelimterOnPref(self, pref, value):
-        if (pref):
-            return str(value).replace(".", ",")
-        return str(value)
 
     def collectData(self, design, bom, prefs):
         # Return CSV string from the BOM
@@ -322,11 +318,7 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                     matList.append(mat)
         return ', '.join(matList)
 
-    def filterFusionCompNameInserts(self, name):
-        name = re.sub("\([0-9]+\)$", '', name)
-        name = name.strip()
-        name = re.sub("v[0-9]+$", '', name)
-        return name.strip()
+    
 
     def notify(self, args):
         global app
@@ -345,7 +337,8 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
 
         try:
             prefs = self.getPrefsObject(inputs)
-
+            preferredUnits = design.fusionUnitsManager.defaultLengthUnits
+            
             # Get all occurrences in the root component of the active design
             root = design.rootComponent
             occs = []
@@ -422,6 +415,9 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                                     bb['x'],
                                     bb['y'],
                                     bb['z'],
+                                    design.fusionUnitsManager.formatInternalValue(bb['x'], preferredUnits, False),
+                                    design.fusionUnitsManager.formatInternalValue(bb['y'], preferredUnits, False),
+                                    design.fusionUnitsManager.formatInternalValue(bb['z'], preferredUnits, False)
                                 ),
                                 self.getBodiesVolume(comp.bRepBodies),
                                 self.getPhysicsArea(comp.bRepBodies),
@@ -431,11 +427,9 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                             ),
                             comp
                         ))
-            csvStr = self.collectData(design, bom, prefs)
-            output = open(filename, 'w')
-            output.writelines(csvStr)
-            output.close()
-
+            # Pass the BOM to the CSV Writer
+            helper.SaveCsv(filename, bom, prefs)
+            
             # save CutList:
             if prefs["generateCutList"] and prefs["incBoundDims"]:
                 cutListStr = self.collectCutList(design, bom, prefs)
