@@ -2,7 +2,7 @@ import io
 import os
 import sys
 import unittest
-from CSV_BOM_helper import BomItem, PhysicalAttributes, Dimensions, Helper
+from CSV_BOM_Core import BomItem, PhysicalAttributes, Dimensions, Helper
 
 # https://www.autodesk.com/autodesk-university/class/Testing-Strategies-Python-Fusion-360-Add-Ins-2017#video
 # https://github.com/theJenix/au2017/tree/master/test

@@ -8,7 +8,7 @@ import collections
 import traceback
 import json
 import re
-import CSV_BOM_helper as helper
+import CSV_BOM_Core as helper
 from typing import List
 
 # Global list to keep all event handlers in scope.
