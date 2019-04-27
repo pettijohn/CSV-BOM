@@ -70,7 +70,7 @@ class Helper:
         with open(filename, 'w', newline='') as csvFile:
             self.WriteCsv(csvFile, bom, prefs)
 
-    def WriteCsv(self, stream: io.IOBase, bom: List[BomItem], prefs):
+    def WriteCsv(self, f, bom: List[BomItem], prefs):
         #TODO
         defaultUnit = "Inches"
 
@@ -100,7 +100,7 @@ class Helper:
         #  are not present in the header, they are ignored. This lets us perform all the
         #  conditional logic of which fields to include just once up front when 
         #  building the header.
-        writer = csv.DictWriter(stream, fieldnames=csvHeader, extrasaction='ignore')
+        writer = csv.DictWriter(f, fieldnames=csvHeader, extrasaction='ignore')
         writer.writeheader()
 
         
@@ -126,59 +126,6 @@ class Helper:
                 csvRow["Height " + defaultUnit] = dimensions[2]
             else:
                 csvRow["Dimension " + defaultUnit] = dimensions[0] + " x " + dimensions[1] + " x " + dimensions[2]
-            #############
-            # TODO delete me, replaced by above
-            # dim = 0
-            # footInchDispFormat = app.preferences.unitAndValuePreferences.footAndInchDisplayFormat
-            
-            # for k in item["boundingBox"]:
-            #     dim += item["boundingBox"][k]
-            # if dim > 0:
-            #     if footInchDispFormat == 0:
-            #         dimX = float(design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["x"], defaultUnit, False))
-            #         dimY = float(design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["y"], defaultUnit, False))
-            #         dimZ = float(design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["z"], defaultUnit, False))
-            #         if prefs["sortDims"]:
-            #             dimSorted = sorted([dimX, dimY, dimZ])
-            #             bbZ = "{0:.3f}".format(dimSorted[0])
-            #             bbX = "{0:.3f}".format(dimSorted[1])
-            #             bbY = "{0:.3f}".format(dimSorted[2])
-            #         else:
-            #             bbX = "{0:.3f}".format(dimX)
-            #             bbY = "{0:.3f}".format(dimY)
-            #             bbZ = "{0:.3f}".format(dimZ)
-
-            #         if prefs["splitDims"]:
-            #             csvStr += '"' + self.replacePointDelimterOnPref(prefs["useComma"], bbX) + '",'
-            #             csvStr += '"' + self.replacePointDelimterOnPref(prefs["useComma"], bbY) + '",'
-            #             csvStr += '"' + self.replacePointDelimterOnPref(prefs["useComma"], bbZ) + '",'
-            #         else:
-            #             dims += '"' + self.replacePointDelimterOnPref(prefs["useComma"], bbX) + ' x '
-            #             dims += self.replacePointDelimterOnPref(prefs["useComma"], bbY) + ' x '
-            #             dims += self.replacePointDelimterOnPref(prefs["useComma"], bbZ)
-            #             csvStr += dims + '",'
-            #     else:
-            #         dimX = design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["x"], defaultUnit, False)
-            #         dimY = design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["y"], defaultUnit, False)
-            #         dimZ = design.fusionUnitsManager.formatInternalValue(item["boundingBox"]["z"], defaultUnit, False)
-
-            #         if prefs["splitDims"]:
-            #             csvStr += '"' + dimX.replace('"', '""') + '",'
-            #             csvStr += '"' + dimY.replace('"', '""') + '",'
-            #             csvStr += '"' + dimZ.replace('"', '""') + '",'
-            #         else:
-            #             dims += '"' + dimX.replace('"', '""') + ' x '
-            #             dims += dimY.replace('"', '""') + ' x '
-            #             dims += dimZ.replace('"', '""')
-            #             csvStr += dims + '",'                        
-            # else:
-            #     if prefs["splitDims"]:
-            #         csvStr += "0" + ','
-            #         csvStr += "0" + ','
-            #         csvStr += "0" + ','
-            #     else:
-            #         csvStr += "0" + ','
-            #######
 
             csvRow["Area cm^2"] = self.replacePointDelimterOnPref(prefs["useComma"], "{0:.2f}".format(item.PhysicalAttributes.Area))
             csvRow["Mass kg"] = self.replacePointDelimterOnPref(prefs["useComma"], "{0:.5f}".format(item.PhysicalAttributes.Mass))
@@ -189,74 +136,75 @@ class Helper:
             writer.writerow(csvRow)
 
 
-    def GetCutlistGaryDarbyString(self):
-        # defaultUnit may be fractional inches, which breaks the sorting functionality (necessary to determine material thickness)
-        defaultUnit = design.fusionUnitsManager.defaultLengthUnits
-        # Get a decimal unit mm too 
-        internalUnit = design.fusionUnitsManager.internalUnits
-
+    def WriteCutlistGaryDarby(self, stream: io.IOBase, bom: List[BomItem], prefs):
         # Init CutList Header
-        cutListStr = 'V2\n'
+        stream.write('V2\n')
         if prefs["useComma"]:
-            cutListStr += 'FormatSettings.decimalseparator,\n'
+            stream.write('FormatSettings.decimalseparator,\n')
         else:
-            cutListStr += 'FormatSettings.decimalseparator.\n'
-        cutListStr += '\n'
-        cutListStr += 'Required\n'
+            stream.write('FormatSettings.decimalseparator.\n')
+        stream.write('\n')
+        stream.write('Required\n')
 
-        #add parts:
         for item in bom:
-            name = self.filterFusionCompNameInserts(item["name"])
+            #add parts:
+            name = self.filterFusionCompNameInserts(item.Name)
             if prefs["ignoreUnderscorePrefComp"] is False and prefs["underscorePrefixStrip"] is True and name[0] == '_':
                 name = name[1:]
             # dimensions:
-            dim = 0
-            for k in item["boundingBox"]:
-                dim += item["boundingBox"][k]
-            if dim > 0:
-                # Formatted units may be strings when fractional inches, e.g., 18 1/2"
-                # Get the internal unit as well, which is float, for sorting
-                axises = ["x", "y", "z"]
-                dimensions = {}
-                for axis in axises:
-                    dimensions[axis] = [item["boundingBox"][axis], design.fusionUnitsManager.formatInternalValue(item["boundingBox"][axis], defaultUnit, False)]
+            # dim = 0
+            # for k in item["boundingBox"]:
+            #     dim += item["boundingBox"][k]
+            # if dim > 0:
+            #     # Formatted units may be strings when fractional inches, e.g., 18 1/2"
+            #     # Get the internal unit as well, which is float, for sorting
+            #     axises = ["x", "y", "z"]
+            #     dimensions = {}
+            #     for axis in axises:
+            #         dimensions[axis] = [item["boundingBox"][axis], design.fusionUnitsManager.formatInternalValue(item["boundingBox"][axis], defaultUnit, False)]
                 
-                # Sort on the first value, which is decimal
-                sortedDimensions =  collections.OrderedDict(sorted(dimensions.items(), key=lambda d: d[1]))
+            #     # Sort on the first value, which is decimal
+            #     sortedDimensions =  collections.OrderedDict(sorted(dimensions.items(), key=lambda d: d[1]))
 
-                # Cutlist requires whole inch measurements to have 0/0 fractions
-                for axis in axises:
-                    if ('/' in dimensions[axis][1]) or ('.' in dimensions[axis][1] and not prefs["useComma"]) or (',' in dimensions[axis][1] and prefs["useComma"]):
-                        pass #easier than all the nots
-                    else:
-                        dimensions[axis][1] = dimensions[axis][1] + " 0/0"
+            #     # Cutlist requires whole inch measurements to have 0/0 fractions
+            #     for axis in axises:
+            #         if ('/' in dimensions[axis][1]) or ('.' in dimensions[axis][1] and not prefs["useComma"]) or (',' in dimensions[axis][1] and prefs["useComma"]):
+            #             pass #easier than all the nots
+            #         else:
+            #             dimensions[axis][1] = dimensions[axis][1] + " 0/0"
                         
-                if prefs["sortDims"]:
-                    dims = list(map(lambda d: d[1][1], sortedDimensions.items()))
-                else:
-                    if type(dimensions["z"][1]) == str:
-                        # String units (fractional inches) don't need to be formatted
-                        dims = [dimensions["z"][1], dimensions["x"][1], dimensions["y"][1]]
-                    else:
-                        # decimal units need to be formatted
-                        f = "{0:.4f}"
-                        dims = [f.format(dimensions["z"][1]), f.format(dimensions["x"][1]), f.format(dimensions["y"][1])]
+            #     if prefs["sortDims"]:
+            #         dims = list(map(lambda d: d[1][1], sortedDimensions.items()))
+            #     else:
+            #         if type(dimensions["z"][1]) == str:
+            #             # String units (fractional inches) don't need to be formatted
+            #             dims = [dimensions["z"][1], dimensions["x"][1], dimensions["y"][1]]
+            #         else:
+            #             # decimal units need to be formatted
+            #             f = "{0:.4f}"
+            #             dims = [f.format(dimensions["z"][1]), f.format(dimensions["x"][1]), f.format(dimensions["y"][1])]
 
-                partStr = ' '  # leading space
-                partStr += self.replacePointDelimterOnPref(prefs["useComma"], dims[1]).ljust(12)  # width, x
-                partStr += self.replacePointDelimterOnPref(prefs["useComma"], dims[2]).ljust(12)  # length, y
+            #     partStr = ' '  # leading space
+            #     partStr += self.replacePointDelimterOnPref(prefs["useComma"], dims[1]).ljust(12)  # width, x
+            #     partStr += self.replacePointDelimterOnPref(prefs["useComma"], dims[2]).ljust(12)  # length, y
 
-                partStr += name
-                partStr += ' (thickness: ' + self.replacePointDelimterOnPref(prefs["useComma"], dims[0]) + defaultUnit + ')'
-                partStr += '\n'
+            #     partStr += name
+            #     partStr += ' (thickness: ' + self.replacePointDelimterOnPref(prefs["useComma"], dims[0]) + defaultUnit + ')'
+            #     partStr += '\n'
 
+            # else:
+            #     partStr = ' 0        0      ' + name + '\n'
+
+            if prefs["sortDims"]:
+                dims = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
             else:
-                partStr = ' 0        0      ' + name + '\n'
+                dims = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
+            
+            partStr = " {0} {1} {2} (thickness: {3})\n".format(dims[0], dims[1], name, dims[2])
 
             # add all instances of the component to the CutList:
-            quantity = int(item["instances"])
-            for i in range(0, quantity):
-                cutListStr += partStr
+            for i in range(0, item.Quantity):
+                stream.write(partStr)
 
         # empty entry for available materials (sheets):
-        cutListStr += '\n' + "Available" + '\n'
+        stream.write('\n' + "Available" + '\n')

@@ -14,18 +14,6 @@ from CSV_BOM_helper import BomItem, PhysicalAttributes, Dimensions, Helper
 
 class MyTest(unittest.TestCase):
 
-    def test_InstantiateBomItem(self):
-        z = BomItem("My component name", 1, "This is my mocked component",
-            PhysicalAttributes(
-                Dimensions(3, 4, 5, "3 0/0", "4 0/0", "5 0/0"),
-                3*4*5,
-                4*5,
-                3*4*5,
-                1,
-                "Water"
-            ))
-        pass
-
     def test_Dimensions_sort(self):
         d = Dimensions(3, 2, 1, "3", "2", "1")
         s = d.GetSortedTuples()
@@ -39,8 +27,8 @@ class MyTest(unittest.TestCase):
         f = d.GetSortedFormatted()
         assert f == ["1", "2", "3"]
 
-    def test_CsvWrite(self):
-        bomItem = BomItem("My component name", 1, "This is my mocked component",
+    def getDefaultBom(self):
+        return BomItem("My component name", 1, "This is my mocked component",
             PhysicalAttributes(
                 Dimensions(3, 4, 5, "3 0/0", "4 0/0", "5 0/0"),
                 3*4*5,
@@ -50,7 +38,8 @@ class MyTest(unittest.TestCase):
                 "Water"
             ))
 
-        prefs = {
+    def getDefaultPrefs(self):
+        return {
                 "onlySelComp": False,
                 "incBoundDims": True,
                 "splitDims": True,
@@ -69,10 +58,43 @@ class MyTest(unittest.TestCase):
                 "incDesc": False,
                 "useComma": False
         }
+
+    def test_CsvWrite(self):
+        bomItem = self.getDefaultBom()
+
+        prefs = self.getDefaultPrefs()
         
         h = Helper()
-        f = io.StringIO()
+        f = io.StringIO(newline='')
         h.WriteCsv(f, [bomItem], prefs)
     
-        print(f.getvalue())
-        assert(len(f.getvalue()) > 0)
+        val = f.getvalue()
+        expected = """Part name,Quantity,Width Inches,Length Inches,Height Inches
+My component name,1,3 0/0,4 0/0,5 0/0
+"""
+        #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
+        self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
+
+
+    def test_cutlistGaryDarby(self):
+        bomItem = self.getDefaultBom()
+        prefs = self.getDefaultPrefs()
+
+        h = Helper()
+        f = io.StringIO(newline='')
+        # with open("./testfile.cutlist.txt", 'w') as f:
+        h.WriteCutlistGaryDarby(f, [bomItem], prefs)
+        
+        expected = """V2
+FormatSettings.decimalseparator.
+
+Required
+ 3 0/0 4 0/0 My component name (thickness: 5 0/0)
+
+Available
+"""
+        val = f.getvalue()
+        self.assertEqual(val.splitlines(), expected.splitlines())
+
+
+        
