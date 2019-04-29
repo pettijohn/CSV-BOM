@@ -2,9 +2,9 @@
 	"autodeskProduct":	"Fusion360",
 	"type":	"addin",
 	"id":	"23339e97-ebc6-4188-8147-a2e21f239950",
-	"author":	"Travis Pettijohn",
+	"author":	"pettijohn @ github",
 	"description":	{
-		"":	"Generates BOM output in CSV format. Several options are provided."
+		"":	"Generates BOM output in a variety of CSV output formats."
 	},
 	"version":	"rel-1-0-0",
 	"runOnStartup": true,

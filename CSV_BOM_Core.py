@@ -21,7 +21,7 @@ class Dimensions:
 
     def GetSortedTuples(self):
         # Sort the tuples on [0]
-        return sorted(self.GetArray(), key=lambda d: d[0])
+        return sorted(self.GetArray(), key=lambda d: d[0], reverse=True)
 
     def GetSortedInternal(self):
         return list(map(lambda t: t[0], self.GetSortedTuples()))
@@ -55,9 +55,9 @@ class Helper:
         pass
 
     def filterFusionCompNameInserts(self, name):
-        name = re.sub("\([0-9]+\)$", '', name)
+        name = re.sub(r"\([0-9]+\)$", '', name)
         name = name.strip()
-        name = re.sub("v[0-9]+$", '', name)
+        name = re.sub(r"v[0-9]+$", '', name)
         return name.strip()
 
     def replacePointDelimterOnPref(self, pref: bool, value: str):
@@ -76,25 +76,15 @@ class Helper:
 
         csvHeader = ["Part name", "Quantity"]
                     
-        if prefs["incVol"]:
-            csvHeader.append("Volume cm^3")
-        if prefs["incBoundDims"]:
-            if prefs["splitDims"]:
-                csvHeader.append("Width " + defaultUnit)
-                csvHeader.append("Length " + defaultUnit)
-                csvHeader.append("Height " + defaultUnit)
-            else:
-                csvHeader.append("Dimension " + defaultUnit)
-        if prefs["incArea"]:
-            csvHeader.append("Area cm^2")
-        if prefs["incMass"]:
-            csvHeader.append("Mass kg")
-        if prefs["incDensity"]:
-            csvHeader.append("Density kg/cm^2")
-        if prefs["incMaterial"]:
-            csvHeader.append("Material")
-        if prefs["incDesc"]:
-            csvHeader.append("Description")
+        csvHeader.append("Volume cm^3")
+        csvHeader.append("Width " + defaultUnit)
+        csvHeader.append("Length " + defaultUnit)
+        csvHeader.append("Height " + defaultUnit)
+        csvHeader.append("Area cm^2")
+        csvHeader.append("Mass kg")
+        csvHeader.append("Density kg/cm^2")
+        csvHeader.append("Material")
+        csvHeader.append("Description")
 
         # Extras Action = Ignore means that when items in the dict are encountered that
         #  are not present in the header, they are ignored. This lets us perform all the
@@ -120,13 +110,10 @@ class Helper:
                 dimensions = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
             else:
                 dimensions = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
-            if prefs["splitDims"]:
-                csvRow["Width " + defaultUnit] = dimensions[0]
-                csvRow["Length " + defaultUnit] = dimensions[1]
-                csvRow["Height " + defaultUnit] = dimensions[2]
-            else:
-                csvRow["Dimension " + defaultUnit] = dimensions[0] + " x " + dimensions[1] + " x " + dimensions[2]
-
+            csvRow["Width " + defaultUnit] = dimensions[0]
+            csvRow["Length " + defaultUnit] = dimensions[1]
+            csvRow["Height " + defaultUnit] = dimensions[2]
+        
             csvRow["Area cm^2"] = self.replacePointDelimterOnPref(prefs["useComma"], "{0:.2f}".format(item.PhysicalAttributes.Area))
             csvRow["Mass kg"] = self.replacePointDelimterOnPref(prefs["useComma"], "{0:.5f}".format(item.PhysicalAttributes.Mass))
             csvRow["Density kg/cm^2"] = self.replacePointDelimterOnPref(prefs["useComma"], "{0:.5f}".format(item.PhysicalAttributes.Density))

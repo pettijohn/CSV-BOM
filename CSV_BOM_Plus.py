@@ -1,5 +1,6 @@
-#Author-Peter Boeker
-#Description-Provides customizable prefixes to collect browser components with there boundary box dimention or volume.
+#Author - Travis Pettijohn
+#Based on CSV-BOM by Peter Boeker https://github.com/macmanpb/CSV-BOM
+#Description - Provides customizable prefixes to collect browser components with there boundary box dimention or volume.
 
 import adsk.core
 import adsk.fusion
@@ -8,7 +9,9 @@ import collections
 import traceback
 import json
 import re
-import CSV_BOM_Core as helper
+from . import CSV_BOM_Core as Core
+# import CSV_BOM_Core as Core
+# from CSV_BOM_Core import Helper, Dimensions, PhysicalAttributes, BomItem
 from typing import List
 
 # Global list to keep all event handlers in scope.
@@ -16,8 +19,8 @@ from typing import List
 handlers = []
 app = adsk.core.Application.get()
 ui = app.userInterface
-cmdId = "CSVBomAddInMenuEntry"
-cmdName = "CSV-BOM"
+cmdId = "CSVBomPlusAddInMenuEntry"
+cmdName = "CSV-BOM Plus"
 dialogTitle = "Create BOM"
 cmdDesc = "Creates a bill of material and a cutlist from the browser components."
 cmdRes = ".//resources//CSV-BOM"
@@ -35,42 +38,42 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         lastPrefs = design.attributes.itemByName(cmdId, "lastUsedOptions")
         # Set defaults
         _onlySelectedComps = False
-        _includeBoundingboxDims = True
-        _splitDims = True
+        # _includeBoundingboxDims = True
+        # _splitDims = True
         _sortDims = False
         _ignoreUnderscorePrefixedComps = True
         _underscorePrefixStrip = False
         _ignoreCompsWithoutBodies = True
         _ignoreLinkedComps = True
         _ignoreVisibleState = True
-        _includeVolume = False
-        _includeArea = False
-        _includeMass = False
-        _includeDensity = False
-        _includeMaterial = False
-        _generateCutList = False
-        _includeDesc = False
+        # _includeVolume = False
+        # _includeArea = False
+        # _includeMass = False
+        # _includeDensity = False
+        # _includeMaterial = False
+        # _generateCutList = False
+        # _includeDesc = False
         _useComma = False
         # Override defaults with last used settings
         if lastPrefs:
             try:
                 lastPrefs = json.loads(lastPrefs.value)
                 _onlySelectedComps = lastPrefs.get("onlySelComp", False)
-                _includeBoundingboxDims = lastPrefs.get("incBoundDims", True)
-                _splitDims = lastPrefs.get("splitDims", True)
+                # _includeBoundingboxDims = lastPrefs.get("incBoundDims", True)
+                # _splitDims = lastPrefs.get("splitDims", True)
                 _sortDims = lastPrefs.get("sortDims", False)
                 _ignoreUnderscorePrefixedComps = lastPrefs.get("ignoreUnderscorePrefComp", True)
                 _underscorePrefixStrip = lastPrefs.get("underscorePrefixStrip", False)
                 _ignoreCompsWithoutBodies = lastPrefs.get("ignoreCompWoBodies", True)
                 _ignoreLinkedComps = lastPrefs.get("ignoreLinkedComp", True)
                 _ignoreVisibleState = lastPrefs.get("ignoreVisibleState", True)
-                _includeVolume = lastPrefs.get("incVol", False)
-                _includeArea = lastPrefs.get("incArea", False)
-                _includeMass = lastPrefs.get("incMass", False)
-                _includeDensity = lastPrefs.get("incDensity", False)
-                _includeMaterial = lastPrefs.get("incMaterial", False)
-                _generateCutList = lastPrefs.get("generateCutList", False)
-                _includeDesc = lastPrefs.get("incDesc", False)
+                # _includeVolume = lastPrefs.get("incVol", False)
+                # _includeArea = lastPrefs.get("incArea", False)
+                # _includeMass = lastPrefs.get("incMass", False)
+                # _includeDensity = lastPrefs.get("incDensity", False)
+                # _includeMaterial = lastPrefs.get("incMaterial", False)
+                # _generateCutList = lastPrefs.get("generateCutList", False)
+                # _includeDesc = lastPrefs.get("incDesc", False)
                 _useComma = lastPrefs.get("useComma", False)
             except:
                 ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -80,26 +83,33 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         cmd = eventArgs.command
         inputs = cmd.commandInputs
         # Configure command inputs UI
+        
+        # Select output file format
+        ipOutputFormat = inputs.addDropDownCommandInput(cmdId + "_outputFormat", "Output File Format", adsk.core.DropDownStyles.TextListDropDownStyle)
+        # TODO - use reflection to identify all formatters
+        ipOutputFormat.listItems.add("Minimal CSV (Dimensions and Name only)", True, '')
+        ipOutputFormat.listItems.add("Full CSV (All properties)", False, '')
+        ipOutputFormat.listItems.add("Cutlist (Maxcut)", False, '')
+        ipOutputFormat.listItems.add("Cutlist (CutList Plus fx)", False, '')
+        ipOutputFormat.listItems.add("Cutlist (Gary Darby)", False, '')
+
+
         ipSelectComps = inputs.addBoolValueInput(cmdId + "_onlySelectedComps", "Selected only", True, "", _onlySelectedComps)
         ipSelectComps.tooltip = "Only selected components will be used"
 
-        ipBoundingBox = inputs.addBoolValueInput(cmdId + "_includeBoundingboxDims", "Include dimension", True, "", _includeBoundingboxDims)
-        ipBoundingBox.tooltip = "Will include the bounding box dimensions of all bodies related the parent component."
+        # ipBoundingBox = inputs.addBoolValueInput(cmdId + "_includeBoundingboxDims", "Include dimension", True, "", _includeBoundingboxDims)
+        # ipBoundingBox.tooltip = "Will include the bounding box dimensions of all bodies related the parent component."
 
-        ipSplitDims = inputs.addBoolValueInput(cmdId + "_splitDims", "Separate dimension", True, "", _splitDims)
-        ipSplitDims.tooltip = "Places the dimension values in separate CVS output columns."
-        ipSplitDims.isVisible = _includeBoundingboxDims
-
-        ipsortDims = inputs.addBoolValueInput(cmdId + "_sortDims", "Sort dimensions", True, "", _sortDims)
-        ipsortDims.tooltip = "Sorts the dimensions for working with panels. The smallest value becomes the height (thickness), the next larger the width and the largest the length."
-        ipsortDims.isVisible = _includeBoundingboxDims
+        ipSortDims = inputs.addBoolValueInput(cmdId + "_sortDims", "Sort dimensions", True, "", _sortDims)
+        ipSortDims.tooltip = "Sorts the dimensions for working with panels. The smallest value becomes the height (thickness), the next larger the width and the largest the length."
+        # ipSortDims.isVisible = _includeBoundingboxDims
 
         ipUnderscorePrefix = inputs.addBoolValueInput(cmdId + "_ignoreUnderscorePrefixedComps", 'Exclude "_"', True, "", _ignoreUnderscorePrefixedComps)
         ipUnderscorePrefix.tooltip = 'Exclude all components there name starts with "_"'
 
         ipUnderscorePrefixStrip = inputs.addBoolValueInput(cmdId + "_underscorePrefixStrip", 'Strip "_"', True, "", _underscorePrefixStrip)
         ipUnderscorePrefixStrip.tooltip = 'If checked, "_" is stripped from components name'
-        ipUnderscorePrefixStrip.isVisible = not _ignoreUnderscorePrefixedComps
+        # ipUnderscorePrefixStrip.isVisible = not _ignoreUnderscorePrefixedComps
 
         ipWoBodies = inputs.addBoolValueInput(cmdId + "_ignoreCompsWithoutBodies", "Exclude if no bodies", True, "", _ignoreCompsWithoutBodies)
         ipWoBodies.tooltip = "Exclude all components if they have at least one body"
@@ -110,49 +120,7 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         ipVisibleState = inputs.addBoolValueInput(cmdId + "_ignoreVisibleState", "Ignore visible state", True, "", _ignoreVisibleState)
         ipVisibleState.tooltip = "Ignores the visible state for components"
 
-        grpPhysics = inputs.addGroupCommandInput(cmdId + "_grpPhysics", "Additional Physics")
-        if _includeVolume or _includeArea or _includeMass or _includeDensity or _includeMaterial:
-            grpPhysics.isExpanded = True
-        else:
-            grpPhysics.isExpanded = False
-        grpPhysicsChildren = grpPhysics.children
-
-        ipVolume = grpPhysicsChildren.addBoolValueInput(cmdId + "_includeVolume", "Include volume", True, "", _includeVolume)
-        ipVolume.tooltip = "Adds the calculated volume of all bodies related to the parent component"
-
-        ipIncludeArea = grpPhysicsChildren.addBoolValueInput(cmdId + "_includeArea", "Include area", True, "", _includeArea)
-        ipIncludeArea.tooltip = "Include component area in cm^2"
-
-        ipIncludeMass = grpPhysicsChildren.addBoolValueInput(cmdId + "_includeMass", "Include mass", True, "", _includeMass)
-        ipIncludeMass.tooltip = "Include component mass in kg"
-
-        ipIncludeDensity = grpPhysicsChildren.addBoolValueInput(cmdId + "_includeDensity", "Include density", True, "", _includeDensity)
-        ipIncludeDensity.tooltip = "Include component density in kg/cm^3"
-
-        ipIncludeMaterial = grpPhysicsChildren.addBoolValueInput(cmdId + "_includeMaterial", "Include material", True, "", _includeMaterial)
-        ipIncludeMaterial.tooltip = "Include component physical material"
-
-        grpCutList = inputs.addGroupCommandInput(cmdId + "_grpCutList", "Cut List")
-        if _generateCutList:
-            grpCutList.isExpanded = True
-        else:
-            grpCutList.isExpanded = False
-        grpCutList.isVisible = _includeBoundingboxDims
-        grpCutListChildren = grpCutList.children
-
-        ipGenerateCutList = grpCutListChildren.addBoolValueInput(cmdId + "_generateCutList", "Generate Cut List", True, "", _generateCutList)
-        ipGenerateCutList.tooltip = "Generates a file for the cut list optimization program from Gary Darby."
-
-        grpMisc = inputs.addGroupCommandInput(cmdId + "_grpMisc", "Misc")
-        if (_includeDesc or _useComma):
-            grpMisc.isExpanded = True
-        else:
-            grpMisc.isExpanded = False
-        grpMiscChildren = grpMisc.children
-        ipCompDesc = grpMiscChildren.addBoolValueInput(cmdId + "_includeCompDesc", "Include description", True, "", _includeDesc)
-        ipCompDesc.tooltip = "Includes the component description. You can add a description<br/>by right clicking a component and open the Properties panel."
-
-        ipUseComma = grpMiscChildren.addBoolValueInput(cmdId + "_useComma", "Use comma delimiter", True, "", _useComma)
+        ipUseComma = inputs.addBoolValueInput(cmdId + "_useComma", "Use comma delimiter", True, "", _useComma)
         ipUseComma.tooltip = "Uses comma instead of point for number decimal delimiter."
 
         # Connect to the execute event.
@@ -185,26 +153,25 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
         # return cutListStr
 
     def getPrefsObject(self, inputs):
-        obj = {
+        return {
             "onlySelComp": inputs.itemById(cmdId + "_onlySelectedComps").value,
-            "incBoundDims": inputs.itemById(cmdId + "_includeBoundingboxDims").value,
-            "splitDims": inputs.itemById(cmdId + "_splitDims").value,
+            # "incBoundDims": inputs.itemById(cmdId + "_includeBoundingboxDims").value,
+            # "splitDims": inputs.itemById(cmdId + "_splitDims").value,
             "sortDims": inputs.itemById(cmdId + "_sortDims").value,
             "ignoreUnderscorePrefComp": inputs.itemById(cmdId + "_ignoreUnderscorePrefixedComps").value,
             "underscorePrefixStrip": inputs.itemById(cmdId + "_underscorePrefixStrip").value,
             "ignoreCompWoBodies": inputs.itemById(cmdId + "_ignoreCompsWithoutBodies").value,
             "ignoreLinkedComp": inputs.itemById(cmdId + "_ignoreLinkedComps").value,
             "ignoreVisibleState": inputs.itemById(cmdId + "_ignoreVisibleState").value,
-            "incVol": inputs.itemById(cmdId + "_includeVolume").value,
-            "incArea": inputs.itemById(cmdId + "_includeArea").value,
-            "incMass": inputs.itemById(cmdId + "_includeMass").value,
-            "incDensity": inputs.itemById(cmdId + "_includeDensity").value,
-            "incMaterial": inputs.itemById(cmdId + "_includeMaterial").value,
-            "generateCutList": inputs.itemById(cmdId + "_generateCutList").value,
-            "incDesc": inputs.itemById(cmdId + "_includeCompDesc").value,
+            # "incVol": inputs.itemById(cmdId + "_includeVolume").value,
+            # "incArea": inputs.itemById(cmdId + "_includeArea").value,
+            # "incMass": inputs.itemById(cmdId + "_includeMass").value,
+            # "incDensity": inputs.itemById(cmdId + "_includeDensity").value,
+            # "incMaterial": inputs.itemById(cmdId + "_includeMaterial").value,
+            # "generateCutList": inputs.itemById(cmdId + "_generateCutList").value,
+            # "incDesc": inputs.itemById(cmdId + "_includeCompDesc").value,
             "useComma": inputs.itemById(cmdId + "_useComma").value
         }
-        return obj
 
     def getBodiesVolume(self, bodies):
         volume = 0
@@ -376,10 +343,11 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                 return
 
             # Gather information about each unique component
-            bom = List[helper.BomItem]
+            bom = [] # type: List[Core.BomItem]
             # Loop through every component in the design
             for occ in occs:
-                comp = occ.Component
+                comp = occ.component
+                # TODO - move _ strip logic here
                 if comp.name.startswith('_') and prefs["ignoreUnderscorePrefComp"]:
                     continue
                 elif prefs["ignoreLinkedComp"] and design != comp.parentDesign:
@@ -406,12 +374,12 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                                 ui.messageBox('Not all Fusion modules are loaded yet, please click on the root component to load them and try again.')
                             return
 
-                        bom.append(helper.BomItem(
+                        bom.append(Core.BomItem(
                             comp.name,
                             1, 
                             comp.description,
-                            helper.PhysicalAttributes(
-                                helper.Dimensions(
+                            Core.PhysicalAttributes(
+                                Core.Dimensions(
                                     bb['x'],
                                     bb['y'],
                                     bb['z'],
@@ -428,14 +396,15 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                             comp
                         ))
             # Pass the BOM to the CSV Writer
+            helper = Core.Helper()
             helper.SaveCsv(filename, bom, prefs)
             
-            # save CutList:
-            if prefs["generateCutList"] and prefs["incBoundDims"]:
-                cutListStr = self.collectCutList(design, bom, prefs)
-                output = open(filename[:len(filename) - 4] + '_cutList.txt', 'w')
-                output.write(cutListStr)
-                output.close()
+            # # save CutList:
+            # if prefs["generateCutList"] and prefs["incBoundDims"]:
+            #     cutListStr = self.collectCutList(design, bom, prefs)
+            #     output = open(filename[:len(filename) - 4] + '_cutList.txt', 'w')
+            #     output.write(cutListStr)
+            #     output.close()
 
             # Save last chosen options
             design.attributes.add(cmdId, "lastUsedOptions", json.dumps(prefs))
@@ -454,19 +423,19 @@ class BOMCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
         global cmdId
         command = args.firingEvent.sender
         inputs = command.commandInputs
-        if inputs.itemById(cmdId + "_includeBoundingboxDims").value is True:
-            inputs.itemById(cmdId + "_splitDims").isVisible = True
-            inputs.itemById(cmdId + "_sortDims").isVisible = True
-            inputs.itemById(cmdId + "_grpCutList").isVisible = True
-        else:
-            inputs.itemById(cmdId + "_splitDims").isVisible = False
-            inputs.itemById(cmdId + "_sortDims").isVisible = False
-            inputs.itemById(cmdId + "_grpCutList").isVisible = False
+        # if inputs.itemById(cmdId + "_includeBoundingboxDims").value is True:
+        #     # inputs.itemById(cmdId + "_splitDims").isVisible = True
+        #     inputs.itemById(cmdId + "_sortDims").isVisible = True
+        #     inputs.itemById(cmdId + "_grpCutList").isVisible = True
+        # else:
+        #     # inputs.itemById(cmdId + "_splitDims").isVisible = False
+        #     inputs.itemById(cmdId + "_sortDims").isVisible = False
+        #     inputs.itemById(cmdId + "_grpCutList").isVisible = False
 
-        if inputs.itemById(cmdId + "_ignoreUnderscorePrefixedComps").value is True:
-            inputs.itemById(cmdId + "_underscorePrefixStrip").isVisible = False
-        else:
-            inputs.itemById(cmdId + "_underscorePrefixStrip").isVisible = True
+        # if inputs.itemById(cmdId + "_ignoreUnderscorePrefixedComps").value is True:
+        #     inputs.itemById(cmdId + "_underscorePrefixStrip").isVisible = False
+        # else:
+        #     inputs.itemById(cmdId + "_underscorePrefixStrip").isVisible = True
 
 
 def run(context):
@@ -502,14 +471,15 @@ def stop(context):
     try:
         global app
         global ui
+        global cmdId
 
         # Clean up the UI.
-        cmdDef = ui.commandDefinitions.itemById("CSVBomAddInMenuEntry")
+        cmdDef = ui.commandDefinitions.itemById(cmdId)
         if cmdDef:
             cmdDef.deleteMe()
 
         toolbarPanel = ui.allToolbarPanels.itemById("SolidCreatePanel")
-        cntrl = toolbarPanel.controls.itemById("CSVBomAddInMenuEntry")
+        cntrl = toolbarPanel.controls.itemById(cmdId)
         if cntrl:
             cntrl.deleteMe()
     except:
