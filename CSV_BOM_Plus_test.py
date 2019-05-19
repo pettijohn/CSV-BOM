@@ -40,39 +40,18 @@ class MyTest(unittest.TestCase):
                 "Water"
             ))
 
-    def getDefaultPrefs(self):
-        return {
-                "onlySelComp": False,
-                "incBoundDims": True,
-                "splitDims": True,
-                "sortDims": True,
-                "ignoreUnderscorePrefComp": True,
-                "underscorePrefixStrip": False,
-                "ignoreCompWoBodies": True,
-                "ignoreLinkedComp": True,
-                "ignoreVisibleState": True,
-                "incVol": False,
-                "incArea": False,
-                "incMass": False,
-                "incDensity": False,
-                "incMaterial": False,
-                "generateCutList": False,
-                "incDesc": False,
-                "useComma": False
-        }
-
     def test_CsvWrite(self):
         bomItem = self.getDefaultBom()
 
-        prefs = self.getDefaultPrefs()
+        prefs = Core.CsvBomPrefs()
         
         h = Core.Helper()
         f = io.StringIO(newline='')
         h.WriteCsv(f, [bomItem], prefs)
     
         val = f.getvalue()
-        expected = """Part name,Quantity,Width Inches,Length Inches,Height Inches
-My component name,1,5 0/0,4 0/0,3 0/0
+        expected = """Part name,Quantity,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
+My component name,1,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
 """
         #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
         self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
@@ -80,7 +59,8 @@ My component name,1,5 0/0,4 0/0,3 0/0
 
     def test_cutlistGaryDarby(self):
         bomItem = self.getDefaultBom()
-        prefs = self.getDefaultPrefs()
+        prefs = Core.CsvBomPrefs()
+        prefs.sortDimensions = True
 
         h = Core.Helper()
         f = io.StringIO(newline='')
