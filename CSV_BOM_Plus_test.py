@@ -30,7 +30,7 @@ class MyTest(unittest.TestCase):
         assert f == ["3", "2", "1"]
 
     def getDefaultBom(self):
-        return Core.BomItem("My component name", 1, "This is my mocked component",
+        return Core.BomItem("My component name", 2, "This is my mocked component",
             Core.PhysicalAttributes(
                 Core.Dimensions(3, 4, 5, "3 0/0", "4 0/0", "5 0/0"),
                 3*4*5,
@@ -39,6 +39,17 @@ class MyTest(unittest.TestCase):
                 1,
                 "Water"
             ))
+
+    def test_prefs(self):
+        start = Core.CsvBomPrefs()
+        # Override two defaults
+        start.useCommaDecimal = True
+        start.useQuantity = False
+        j = start.to_json()
+
+        finish = Core.CsvBomPrefs.from_json(j)
+        assert finish.useCommaDecimal
+        assert not start.useQuantity
 
     def test_CsvWrite(self):
         bomItem = self.getDefaultBom()
@@ -51,7 +62,24 @@ class MyTest(unittest.TestCase):
     
         val = f.getvalue()
         expected = """Part name,Quantity,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
-My component name,1,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
+My component name,2,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
+"""
+        #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
+        self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
+
+    def test_CsvWrite_noQuantity(self):
+        bomItem = self.getDefaultBom()
+
+        prefs = Core.CsvBomPrefs(useQuantity=False)
+        
+        h = Core.Helper()
+        f = io.StringIO(newline='')
+        h.WriteCsv(f, [bomItem], prefs)
+    
+        val = f.getvalue()
+        expected = """Part name,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
+My component name,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
+My component name,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
 """
         #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
         self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
@@ -71,6 +99,7 @@ My component name,1,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my
 FormatSettings.decimalseparator.
 
 Required
+ 5 0/0 4 0/0 My component name (thickness: 3 0/0)
  5 0/0 4 0/0 My component name (thickness: 3 0/0)
 
 Available

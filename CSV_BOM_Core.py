@@ -10,10 +10,10 @@ from typing import List
 
 class CsvBomPrefs:
     # Following serialization pattern from https://stackoverflow.com/a/33270983/435368
-    def __init__(self, onlySelectedComponents=False, sortDimensions=False, 
+    def __init__(self, onlySelectedComponents=False, sortDimensions=True, 
         ignoreUnderscorePrefixedComponents=True, stripUnderscorePrefix=False,
         ignoreCompWoBodies=True, ignoreLinkedComponents=True,
-        ignoreVisibleState=True, useCommaDecimal=False, **kwargs):
+        ignoreVisibleState=True, useCommaDecimal=False, useQuantity=True, **kwargs):
         self.onlySelectedComponents = onlySelectedComponents
         self.sortDimensions=sortDimensions
         self.ignoreUnderscorePrefixedComponents=ignoreUnderscorePrefixedComponents
@@ -22,6 +22,7 @@ class CsvBomPrefs:
         self.ignoreLinkedComponents=ignoreLinkedComponents
         self.ignoreVisibleState=ignoreVisibleState
         self.useCommaDecimal=useCommaDecimal
+        self.useQuantity=useQuantity
 
     @classmethod
     def from_json(cls, json_str):
@@ -98,8 +99,11 @@ class Helper:
         #TODO
         defaultUnit = "Inches"
 
-        csvHeader = ["Part name", "Quantity"]
-                    
+        csvHeader = ["Part name"]
+        
+        if(prefs.useQuantity):
+            csvHeader.append("Quantity")
+
         csvHeader.append("Volume cm^3")
         csvHeader.append("Width " + defaultUnit)
         csvHeader.append("Length " + defaultUnit)
@@ -119,32 +123,38 @@ class Helper:
 
         
         for item in bom:
-            csvRow = {}
-            name = self.filterFusionCompNameInserts(item.Name)
-            if prefs.ignoreUnderscorePrefixedComponents is False and prefs.stripUnderscorePrefix is True and name[0] == '_':
-                name = name[1:]
+            # If we don't use a quanitity flag, then repeat the row
+            repeat = 1
+            if not prefs.useQuantity:
+                repeat = item.Quantity
                 
-            csvRow["Part name"] = name
-            csvRow["Quantity"] = item.Quantity
+            for r in range(repeat):
+                csvRow = {}
+                name = self.filterFusionCompNameInserts(item.Name)
+                if prefs.ignoreUnderscorePrefixedComponents is False and prefs.stripUnderscorePrefix is True and name[0] == '_':
+                    name = name[1:]
+                    
+                csvRow["Part name"] = name
+                csvRow["Quantity"] = item.Quantity
+                
+                csvRow["Volume cm^3"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, item.PhysicalAttributes.Volume)
+                
+                #############
+                if prefs.sortDimensions:
+                    dimensions = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
+                else:
+                    dimensions = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
+                csvRow["Width " + defaultUnit] = dimensions[0]
+                csvRow["Length " + defaultUnit] = dimensions[1]
+                csvRow["Height " + defaultUnit] = dimensions[2]
             
-            csvRow["Volume cm^3"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, item.PhysicalAttributes.Volume)
-            
-            #############
-            if prefs.sortDimensions:
-                dimensions = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
-            else:
-                dimensions = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
-            csvRow["Width " + defaultUnit] = dimensions[0]
-            csvRow["Length " + defaultUnit] = dimensions[1]
-            csvRow["Height " + defaultUnit] = dimensions[2]
-        
-            csvRow["Area cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.2f}".format(item.PhysicalAttributes.Area))
-            csvRow["Mass kg"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Mass))
-            csvRow["Density kg/cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Density))
-            csvRow["Material"] = item.PhysicalAttributes.Material
-            csvRow["Description"] = item.Description
-            
-            writer.writerow(csvRow)
+                csvRow["Area cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.2f}".format(item.PhysicalAttributes.Area))
+                csvRow["Mass kg"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Mass))
+                csvRow["Density kg/cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Density))
+                csvRow["Material"] = item.PhysicalAttributes.Material
+                csvRow["Description"] = item.Description
+                
+                writer.writerow(csvRow)
 
 
     def WriteCutlistGaryDarby(self, stream: io.IOBase, bom: List[BomItem], prefs):

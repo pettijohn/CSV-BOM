@@ -81,8 +81,11 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         ipVisibleState = inputs.addBoolValueInput("ignoreVisibleState", "Ignore visible state", True, "", prefs.ignoreVisibleState)
         ipVisibleState.tooltip = "Ignores the visible state for components. If unchecked, only visible components will be saved to BOM."
 
-        ipUseComma = inputs.addBoolValueInput("useCommaDecimal", "Use comma delimiter", True, "", prefs.useCommaDecimal)
+        ipUseComma = inputs.addBoolValueInput("useCommaDecimal", "Use comma decimal delimiter", True, "", prefs.useCommaDecimal)
         ipUseComma.tooltip = "Uses comma instead of point for number decimal delimiter."
+
+        ipUseQuantity = inputs.addBoolValueInput("useQuantity", "Use quantity field", True, "", prefs.useQuantity)
+        ipUseQuantity.tooltip = "Use a quantity field; otherwise output one row per repeated component."
 
         # Connect to the execute event.
         onExecute = BOMCommandExecuteHandler()
@@ -105,9 +108,9 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
             commandInput = inputs.item(i)
             if 'selectedItem' in dir(commandInput):
                 # Drop down or similar
-                prefDict[commandInput.name] = commandInput.selectedItem.name
+                prefDict[commandInput.id] = commandInput.selectedItem.name
             else:
-                prefDict[commandInput.name] = commandInput.value
+                prefDict[commandInput.id] = commandInput.value
         return Core.CsvBomPrefs(**prefDict)
 
     def getBodiesVolume(self, bodies):
