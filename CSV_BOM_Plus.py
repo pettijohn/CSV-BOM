@@ -39,7 +39,7 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         prefs = Core.CsvBomPrefs()
         if lastPrefs:
             try:
-                prefs = Core.CsvBomPrefs.from_json(lastPrefs.Value)
+                prefs = Core.CsvBomPrefs.from_json(lastPrefs.value)
                 
             except:
                 ui.messageBox('Error loading previous preferences, resetting to default.')
@@ -272,10 +272,11 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                 ui.messageBox('In this design there are no components.')
                 return
 
+            # http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-69478fef-f96f-4e7c-b5af-766301072042
             fileDialog = ui.createFileDialog()
             fileDialog.isMultiSelectEnabled = False
             fileDialog.title = dialogTitle + " filename"
-            fileDialog.filter = 'CSV (*.csv)'
+            fileDialog.filter = 'CSV (*.csv);;TXT (*.txt);;All Files (*.*)'
             fileDialog.filterIndex = 0
             dialogResult = fileDialog.showSave()
             if dialogResult == adsk.core.DialogResults.DialogOK:
