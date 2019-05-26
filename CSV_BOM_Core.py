@@ -13,7 +13,7 @@ class CsvBomPrefs:
     def __init__(self, onlySelectedComponents=False, sortDimensions=True, 
         ignoreUnderscorePrefixedComponents=True, stripUnderscorePrefix=False,
         ignoreCompWoBodies=True, ignoreLinkedComponents=True,
-        ignoreVisibleState=True, useCommaDecimal=False, useQuantity=True, **kwargs):
+        ignoreVisibleState=True, useCommaDecimal=False, useQuantity=True, lengthUnitString="", **kwargs):
         self.onlySelectedComponents = onlySelectedComponents
         self.sortDimensions=sortDimensions
         self.ignoreUnderscorePrefixedComponents=ignoreUnderscorePrefixedComponents
@@ -23,6 +23,7 @@ class CsvBomPrefs:
         self.ignoreVisibleState=ignoreVisibleState
         self.useCommaDecimal=useCommaDecimal
         self.useQuantity=useQuantity
+        self.lengthUnitString=lengthUnitString
 
     @classmethod
     def from_json(cls, json_str):
@@ -96,18 +97,15 @@ class Helper:
             self.WriteCsv(csvFile, bom, prefs)
 
     def WriteCsv(self, f, bom: List[BomItem], prefs: CsvBomPrefs):
-        #TODO
-        defaultUnit = "Inches"
-
         csvHeader = ["Part name"]
         
         if(prefs.useQuantity):
             csvHeader.append("Quantity")
 
         csvHeader.append("Volume cm^3")
-        csvHeader.append("Width " + defaultUnit)
-        csvHeader.append("Length " + defaultUnit)
-        csvHeader.append("Height " + defaultUnit)
+        csvHeader.append("Width " + prefs.lengthUnitString)
+        csvHeader.append("Length " + prefs.lengthUnitString)
+        csvHeader.append("Height " + prefs.lengthUnitString)
         csvHeader.append("Area cm^2")
         csvHeader.append("Mass kg")
         csvHeader.append("Density kg/cm^2")
@@ -144,10 +142,15 @@ class Helper:
                     dimensions = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
                 else:
                     dimensions = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
-                csvRow["Width " + defaultUnit] = dimensions[0]
-                csvRow["Length " + defaultUnit] = dimensions[1]
-                csvRow["Height " + defaultUnit] = dimensions[2]
+                csvRow["Width " + prefs.lengthUnitString] = dimensions[0]
+                csvRow["Length " + prefs.lengthUnitString] = dimensions[1]
+                csvRow["Height " + prefs.lengthUnitString] = dimensions[2]
             
+                # Fusion 360 API doesn't make it easy to convert area, mass, or density.
+                # This code works:
+                #  design.fusionUnitsManager.convert(1.0, "in * in * in / lbmass", "cm * cm * cm / kg") 
+                # But the units manager doesn't expose user preferences other than lenght/distance units
+                #  http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-40dda15b-8dec-4122-b0fa-cbd604cd35b5
                 csvRow["Area cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.2f}".format(item.PhysicalAttributes.Area))
                 csvRow["Mass kg"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Mass))
                 csvRow["Density kg/cm^2"] = self.replacePointDelimterOnPref(prefs.useCommaDecimal, "{0:.5f}".format(item.PhysicalAttributes.Density))

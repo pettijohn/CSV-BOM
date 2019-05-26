@@ -101,7 +101,6 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
 
     def getPrefsObject(self, inputs) -> Core.CsvBomPrefs:
         """ Construct a Core.CsvBomPrefs object from the selected parameters on the UI """
-        # TODO - does this shortcut work? Is CommandInputs iterable? 
         # http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-504c1dbc-5132-454e-86fd-72101fa55d84
         prefDict = {}
         for i in range(inputs.count):
@@ -110,6 +109,7 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                 # Drop down or similar
                 prefDict[commandInput.id] = commandInput.selectedItem.name
             else:
+                # Boolean/checkbox
                 prefDict[commandInput.id] = commandInput.value
         return Core.CsvBomPrefs(**prefDict)
 
@@ -245,6 +245,15 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
         try:
             prefs = self.getPrefsObject(inputs)
             preferredUnits = design.fusionUnitsManager.defaultLengthUnits
+            prefs.lengthUnitString = preferredUnits
+            # enum : http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-cb53a403-d687-4016-aae6-b03f095bdb61
+            # Name	Value	Description
+            # MillimeterDistanceUnits	0	Millimeter
+            # CentimeterDistanceUnits	1	Centimeter
+            # MeterDistanceUnits	    2	Meter
+            # InchDistanceUnits	        3	Inch
+            # FootDistanceUnits	        4	Foot            
+            # preferredUnits = design.fusionUnitsManager.distanceDisplayUnits
             
             # Get all occurrences in the root component of the active design
             root = design.rootComponent
@@ -319,10 +328,11 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                             1, 
                             comp.description,
                             Core.PhysicalAttributes(
-                                Core.Dimensions(
+                                Core.Dimensions( #Dimensions are x,y,z numeric internal units (cm) and string-formatted per the model & user preferences
                                     bb['x'],
                                     bb['y'],
                                     bb['z'],
+                                    # http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-40dda15b-8dec-4122-b0fa-cbd604cd35b
                                     design.fusionUnitsManager.formatInternalValue(bb['x'], preferredUnits, False),
                                     design.fusionUnitsManager.formatInternalValue(bb['y'], preferredUnits, False),
                                     design.fusionUnitsManager.formatInternalValue(bb['z'], preferredUnits, False)
