@@ -8,12 +8,26 @@ import collections
 import json
 from typing import List
 
+class OutputFormats:
+    garyDarby = "Cutlist (Gary Darby)"
+    fullCsv = "Full CSV (All properties)"
+    
+    all = [
+        fullCsv, 
+        "Minimal CSV (Dimensions and Name only)", 
+        "Cutlist (Maxcut)", 
+        "Cutlist (CutList Plus fx)", 
+        garyDarby]
+
+    
+
 class CsvBomPrefs:
     # Following serialization pattern from https://stackoverflow.com/a/33270983/435368
     def __init__(self, onlySelectedComponents=False, sortDimensions=True, 
         ignoreUnderscorePrefixedComponents=True, stripUnderscorePrefix=False,
         ignoreCompWoBodies=True, ignoreLinkedComponents=True,
-        ignoreVisibleState=True, useCommaDecimal=False, useQuantity=True, lengthUnitString="", **kwargs):
+        ignoreVisibleState=True, useCommaDecimal=False, useQuantity=True, lengthUnitString="", 
+        outputFormat=OutputFormats.fullCsv, **kwargs):
         self.onlySelectedComponents = onlySelectedComponents
         self.sortDimensions=sortDimensions
         self.ignoreUnderscorePrefixedComponents=ignoreUnderscorePrefixedComponents
@@ -24,6 +38,7 @@ class CsvBomPrefs:
         self.useCommaDecimal=useCommaDecimal
         self.useQuantity=useQuantity
         self.lengthUnitString=lengthUnitString
+        self.outputFormat=outputFormat
 
     @classmethod
     def from_json(cls, json_str):
@@ -92,9 +107,13 @@ class Helper:
             return str(value).replace(".", ",")
         return str(value)
 
-    def SaveCsv(self, filename, bom: List[BomItem], prefs):
+    def SaveFile(self, filename, bom: List[BomItem], prefs: CsvBomPrefs):
+        """ Determine the correct output option from prefs.outputFormat"""
         with open(filename, 'w', newline='') as csvFile:
-            self.WriteCsv(csvFile, bom, prefs)
+            if prefs.outputFormat == OutputFormats.garyDarby:
+                self.WriteCutlistGaryDarby(csvFile, bom, prefs)
+            else:
+                self.WriteCsv(csvFile, bom, prefs)
 
     def WriteCsv(self, f, bom: List[BomItem], prefs: CsvBomPrefs):
         csvHeader = ["Part name"]
@@ -119,7 +138,6 @@ class Helper:
         writer = csv.DictWriter(f, fieldnames=csvHeader, extrasaction='ignore')
         writer.writeheader()
 
-        
         for item in bom:
             # If we don't use a quanitity flag, then repeat the row
             repeat = 1
@@ -170,6 +188,20 @@ class Helper:
         stream.write('\n')
         stream.write('Required\n')
 
+        useFractions = None
+        for item in bom:
+            # Look at all dimensions for a decimal or fraction separator to determine integer handling
+            for dim in item.PhysicalAttributes.Dimensions.GetUnsortedFormatted():
+                if '/' in dim:
+                    useFractions = True
+                    break
+                if (not prefs.useCommaDecimal and '.' in dim) or (prefs.useCommaDecimal and ',' in dim):
+                    useFractions = False
+            if useFractions is not None:
+                break
+        if useFractions is None:
+            useFractions = False
+
         for item in bom:
             #add parts:
             name = self.filterFusionCompNameInserts(item.Name)
@@ -180,8 +212,13 @@ class Helper:
                 dims = item.PhysicalAttributes.Dimensions.GetSortedFormatted()
             else:
                 dims = item.PhysicalAttributes.Dimensions.GetUnsortedFormatted()
+
+            for i in range(len(dims)):
+                # GD Cutlist requires integer legths to end with "0/0" when using fractions
+                if useFractions and '/' not in dims[i]:
+                    dims[i] += " 0/0"
             
-            partStr = " {0} {1} {2} (thickness: {3})\n".format(dims[0], dims[1], name, dims[2])
+            partStr = " {0}\t{1}\t{2} (thickness: {3})\n".format(dims[0], dims[1], name, dims[2])
 
             # add all instances of the component to the CutList:
             for i in range(0, item.Quantity):

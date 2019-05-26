@@ -55,6 +55,8 @@ class MyTest(unittest.TestCase):
         bomItem = self.getDefaultBom()
 
         prefs = Core.CsvBomPrefs()
+        prefs.lengthUnitString = "Inches"
+        prefs.sortDimensions = False
         
         h = Core.Helper()
         f = io.StringIO(newline='')
@@ -71,6 +73,8 @@ My component name,2,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my
         bomItem = self.getDefaultBom()
 
         prefs = Core.CsvBomPrefs(useQuantity=False)
+        prefs.sortDimensions = True
+        prefs.lengthUnitString = "Inches"
         
         h = Core.Helper()
         f = io.StringIO(newline='')
@@ -78,8 +82,8 @@ My component name,2,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my
     
         val = f.getvalue()
         expected = """Part name,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
-My component name,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
-My component name,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
+My component name,60,5 0/0,4 0/0,3 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
+My component name,60,5 0/0,4 0/0,3 0/0,20.00,60.00000,1.00000,Water,This is my mocked component
 """
         #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
         self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
@@ -99,8 +103,8 @@ My component name,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my m
 FormatSettings.decimalseparator.
 
 Required
- 5 0/0 4 0/0 My component name (thickness: 3 0/0)
- 5 0/0 4 0/0 My component name (thickness: 3 0/0)
+ 5 0/0\t4 0/0\tMy component name (thickness: 3 0/0)
+ 5 0/0\t4 0/0\tMy component name (thickness: 3 0/0)
 
 Available
 """

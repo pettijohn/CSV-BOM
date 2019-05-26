@@ -53,13 +53,11 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         # Select output file format
         ipOutputFormat = inputs.addDropDownCommandInput("outputFormat", "Output File Format", adsk.core.DropDownStyles.TextListDropDownStyle)
         # TODO - use reflection to identify all formatters
-        ipOutputFormat.listItems.add("Minimal CSV (Dimensions and Name only)", True, '')
-        ipOutputFormat.listItems.add("Full CSV (All properties)", False, '')
-        ipOutputFormat.listItems.add("Cutlist (Maxcut)", False, '')
-        ipOutputFormat.listItems.add("Cutlist (CutList Plus fx)", False, '')
-        ipOutputFormat.listItems.add("Cutlist (Gary Darby)", False, '')
-
-
+        for outputFormat in Core.OutputFormats.all:
+            # If the saved output format == the one we are adding to the list, select it
+            selected = prefs.outputFormat==outputFormat
+            ipOutputFormat.listItems.add(outputFormat, selected, '')
+            
         ipSelectComps = inputs.addBoolValueInput("onlySelectedComponents", "Selected only", True, "", prefs.onlySelectedComponents)
         ipSelectComps.tooltip = "Only selected components will be used"
 
@@ -247,12 +245,6 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
             preferredUnits = design.fusionUnitsManager.defaultLengthUnits
             prefs.lengthUnitString = preferredUnits
             # enum : http://help.autodesk.com/view/fusion360/ENU/?guid=GUID-cb53a403-d687-4016-aae6-b03f095bdb61
-            # Name	Value	Description
-            # MillimeterDistanceUnits	0	Millimeter
-            # CentimeterDistanceUnits	1	Centimeter
-            # MeterDistanceUnits	    2	Meter
-            # InchDistanceUnits	        3	Inch
-            # FootDistanceUnits	        4	Foot            
             # preferredUnits = design.fusionUnitsManager.distanceDisplayUnits
             
             # Get all occurrences in the root component of the active design
@@ -345,9 +337,9 @@ class BOMCommandExecuteHandler(adsk.core.CommandEventHandler):
                             ),
                             comp
                         ))
-            # Pass the BOM to the CSV Writer
+            # Pass the BOM to the file Writer
             helper = Core.Helper()
-            helper.SaveCsv(filename, bom, prefs)
+            helper.SaveFile(filename, bom, prefs)
             
             # Save last chosen options
             design.attributes.add(cmdId, "lastUsedOptions", prefs.to_json())
