@@ -1,3 +1,4 @@
+import collections
 import io
 import os
 import sys
@@ -13,6 +14,8 @@ import CSV_BOM_Core as Core
 
 #import adsk
 #import CSV_BOM
+
+
 
 class MyTest(unittest.TestCase):
 
@@ -60,7 +63,9 @@ class MyTest(unittest.TestCase):
         
         h = Core.Helper()
         f = io.StringIO(newline='')
-        h.WriteCsv(f, [bomItem], prefs)
+        template = h.ParseCsvTemplate(prefs, Core.OutputFormats.FullCsvTemplate)
+        h.WriteCsvFromTemplate(f, [bomItem], prefs, template)
+        # h.WriteFullCsv(f, [bomItem], prefs)
     
         val = f.getvalue()
         expected = """Part name,Quantity,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
@@ -78,7 +83,9 @@ My component name,2,60,3 0/0,4 0/0,5 0/0,20.00,60.00000,1.00000,Water,This is my
         
         h = Core.Helper()
         f = io.StringIO(newline='')
-        h.WriteCsv(f, [bomItem], prefs)
+        template = h.ParseCsvTemplate(prefs, Core.OutputFormats.FullCsvTemplate)
+        h.WriteCsvFromTemplate(f, [bomItem], prefs, template)
+        # h.WriteFullCsv(f, [bomItem], prefs)
     
         val = f.getvalue()
         expected = """Part name,Volume cm^3,Width Inches,Length Inches,Height Inches,Area cm^2,Mass kg,Density kg/cm^2,Material,Description
@@ -88,7 +95,7 @@ My component name,60,5 0/0,4 0/0,3 0/0,20.00,60.00000,1.00000,Water,This is my m
         #self.assertMultiLineEqual(val == expected) #Fails due to \r\n and \n inconsistencies 
         self.assertEqual(val.splitlines(), expected.splitlines()) #Works as it compares contents of the array, each line of the string
 
-
+    
     def test_cutlistGaryDarby(self):
         bomItem = self.getDefaultBom()
         prefs = Core.CsvBomPrefs()
@@ -112,4 +119,18 @@ Available
         self.assertEqual(val.splitlines(), expected.splitlines())
 
 
+
+
+
+    def test_parseCsvTemplate(self):
+        h = Core.Helper()
+        p = Core.CsvBomPrefs(lengthUnitString="Inches")
+        template = """This is my header {},Second Col
+Length,Volume"""
+        actual = h.ParseCsvTemplate(p, template)
+        expected = collections.OrderedDict()
+        expected["This is my header Inches"] = "Length"
+        expected["Second Col"] = "Volume"
+
+        self.assertDictEqual(actual, expected)
         

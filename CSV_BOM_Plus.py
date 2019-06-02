@@ -53,7 +53,7 @@ class BOMCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
         # Select output file format
         ipOutputFormat = inputs.addDropDownCommandInput("outputFormat", "Output File Format", adsk.core.DropDownStyles.TextListDropDownStyle)
         # TODO - use reflection to identify all formatters
-        for outputFormat in Core.OutputFormats.all:
+        for outputFormat in Core.OutputFormats.all.keys():
             # If the saved output format == the one we are adding to the list, select it
             selected = prefs.outputFormat==outputFormat
             ipOutputFormat.listItems.add(outputFormat, selected, '')
