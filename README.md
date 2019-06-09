@@ -1,22 +1,25 @@
 # CSV-BOM
-Creates a bill of material and cut lists from the browser components tree in Autodesk Fusion360.
+Creates a bill of material and cut lists from the browser components tree in Autodesk Fusion360. CSV BOM Plus is a rewrite of the original [CSV-BOM](https://github.com/macmanpb/CSV-BOM) with the following enhancements:
+* Code improvements: 
+  * CSV BOM Plus refactored to separate the CSV generating logic from the Fusion 360 component tree walking logic, resulting in decoupled code that was easier to test. 
+  * Added unit tests.
+  * Switched to Python built-in CSV writers instead of string contatenation. 
+* CSV BOM Plus supports templated CSV generation, streamling the input options, and making it simple to add new output file formats. 
+* Support for all unit formats (including fractional inch).
+* Adds support for [MaxCut](https://www.maxcutsoftware.com/) for cutlist generation (in addition to [Gary Darby's Cutlist](http://www.delphiforfun.org/Programs/CutList.htm)).
 
 ## General Usage Instructions
 After [installation](#installation), go to the toolbar "Create" submenu and choose "Create BOM". A dialog appears which shows provided options to control the CSV output. Click OK and a save file dialog comes up. Name your file and click OK. After creating the file a message box popups with the information that the file has successfully created. Open a suitable app which can handle CSV formatted files. Import the CSV file and voila the BOM of your design is showing.  
-There is also an option to generate cut lists for woodworking projects. They can be used in conjunction with a software by [Gary Darby](http://www.delphiforfun.org/Programs/CutList.htm) to optimize panel use.
 
-### Supportet options
+### Supported options
 
 ![](resources/CSV-BOM/store_screen.png)
 
+* **Output File Format**
+> Pick the appropriate [output format](#outputs). 
+
 * **Selected only**
 > Means that only selected components will be exported to CSV.
-
-* **Include dimension**
-> Exports the accumulated bounding box dimension of all solid bodies on first level whithin a component.
-
-* **Separate dimensions**
-> Places the dimension values in separate CVS output columns.
 
 * **Sort Dimensions**
 > If you are cutting your parts out of any kind of panelized material (i.e. plywood), you want the height of the part usually be the thickness of your material. 
@@ -39,67 +42,81 @@ The smallest value becomes the height (thickness), the next larger the width and
 * **Ignore visible state**
 > The component is not visible but it should taken to the BOM? Ok, activate this option to do that.
 
-### Supported physical options
+* **Use comma decimal delimiter**
+> If checked CSV-BOM will replace the dot decimal delimiter with a comma. This is useful for all countries that uses a comma for float decimal delimiters.
+> As a benefit of that option, Applications like Apple Numbers, MS-Excel or OpenOffice can handle these CSV-entries as native numbers instead of simple text.
 
-* **Include volume**
-> Includes the accumulated volume for all bodies at first level whithin a component.
+* **Use Quantity Field**
+> For multiple instances of the same compenent, insert a single row and quantity field. If not, repeat the row. There are instances (e.g. mail merge in Word to print labels) where repeated rows are easier to work with. 
 
-* **Include area**
-> Includes the accumulated area for all bodies at first level whithin a component.
 
-* **Include mass**
-> Includes the accumulated mass for all bodies at first level whithin a component.
+<a id="outputs"></a>
 
-* **Include density**
-> Add's the density of the first body at first level found whithin a component.
+## Output Formats
 
-* **Include material**
-> Includes the material names as an comma seperated list for all bodies at first level whithin a component.
+* Full CSV (All Properties).
+> Part name,Quantity,Volume cm^3,Width (units),Length (units),Height (units),Area cm^2,Mass kg,Density kg/cm^2,Material,Description
 
-### Cut List
+* Minimal CSV (Dimensions and Name Only)
+> Part name,Quantity,Width (unit),Length (unit),Height (unit)
 
-* **Generate Cut List**
-> Generates a file that can be used in the [cut list optimization software by Gary Darby](http://www.delphiforfun.org/Programs/CutList.htm). 
-This is especially helpful in woodworking projects and allows to optimize panel use.
-The file is saved under the same name as the BOM but with a "_cutList.txt" ending.
+* Cutlist (MaxCut) 
+> CSV suitable for import into [MaxCut](https://www.maxcutsoftware.com/)
+
+* Cutlist (Gary Darby)
+> Text file suitable for [Gary Darby's Cutlist](http://www.delphiforfun.org/Programs/CutList.htm)
+
+## Units
+
+In all cases, length units are determined from your model options and user preferences. All other units use metric SI (currently Fusion 360 doesn't support converting volume, mass, and density, only length). 
+
+![Model Units](resources/CSV-BOM/units-model.png)
+
+![User Preferences Unit Display](resources/CSV-BOM/units-prefs.png)
+
+
+## Adding Additional Output Formats
+
+If others might benefit from your output format, please submit a pull request. 
+
+1. In file CSV_BOM_Core.py, locate the class `OutputFormats`
+2. Add a new variable with a two-line CSV string, such as:
+
+```
+FullCsvTemplate = """Part name,Quantity,Volume cm^3,Width {},Length {},Height {},Area cm^2,Mass kg,Density kg/cm^2,Material,Description
+Name,Quantity,Volume,Width,Length,Height,Area,Mass,Density,Material,Description"""
+```
+
+3. The first row is your CSV's header; {} will be substituted with the length unit (e.g. inch, mm) per the model settings and your user preferences. The second row will contain the values specified. 
+4. `FullCsvTemplate` shows all available values. Strings must match exactly (case, whitespace, etc). 
+
+## Cutlists
+
+Cutlist software is for woodworkers who want to optimize the cuts they make. Below is a screenshot from Gary Darby's showing what it might look like. 
 
 > ![Example Cut List/Panel Optimization](resources/CSV-BOM/cutlist.png)  
 > Example Cut List/Panel Optimization
 	
 > Note: If the cut list software is not able to read your dimensions properly, try changing the option "Use comma delimiter" in CSV-BOM (see below).
 
-### Misc
-
-* **Include description**
-> Includes the component description. To edit, right click on a component and select _Properties_ in the submenu.
-
-* **Use comma delimiter**
-> If checked CSV-BOM will replace the dot decimal delimiter with a comma. This is useful for all countries that uses a comma for float decimal delimiters.
-> As a benefit of that option, Applications like Apple Numbers, MS-Excel or OpenOffice can handle these CSV-entries as native numbers instead of simple text.
-
-* ...
-
-
----
 
 <a id="installation"></a>
 
 ## Installation
 
-1. Checkout the repository from Github or get the ZIP-package [here](http://www.github.de/macmanpb/CSV-BOM/archive/master.zip)
-2. If you have checked out the repo, you can skip point 3
-3. Extract the content of the downloaded ZIP to a preferred location
-4. Open Fusion360 and load the Add-Ins dialog
+1. Checkout the repository from Github or [download the ZIP-package](https://github.com/pettijohn/CSV-BOM-Plus/archive/master.zip)
+2. If you downloaded a ZIP, extract the contents to a preferred location
+3. Open Fusion360 and load the Add-Ins dialog
 
 	![Toolbar top right](resources/CSV-BOM/toolbar.png)
 
-5. To add the CSV-BOM Add-In, click on the Add-Ins tab and then on the small plus icon.
+4. To add the CSV-BOM Add-In, click on the Add-Ins tab and then on the small plus icon.
 
 	![Add-Ins dialog](resources/CSV-BOM/addins_dialog.png)
 
-6. Locate the unzipped _CSV-BOM-master_ folder, open it and choose _CSV-BOM.py_ and click **OK**
+5. Locate the unzipped _CSV-BOM-master_ folder, open it and choose _CSV-BOM.py_ and click **OK**
 
-7. The Add-In is now listed but not running. Select the _CSV-BOM_ entry, activate _Run on Startup_ and click _Run_
+6. The Add-In is now listed but not running. Select the _CSV-BOM_ entry, activate _Run on Startup_ and click _Run_
 
 	![Add-In in the list](resources/CSV-BOM/addins-dialog-listed.png)
 
