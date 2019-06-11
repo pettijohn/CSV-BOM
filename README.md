@@ -1,4 +1,4 @@
-# CSV-BOM
+# CSV-BOM Plus
 Creates a bill of material and cut lists from the browser components tree in Autodesk Fusion360. CSV BOM Plus is a rewrite of the original [CSV-BOM](https://github.com/macmanpb/CSV-BOM) with the following enhancements:
 * Code improvements: 
   * CSV BOM Plus refactored to separate the CSV generating logic from the Fusion 360 component tree walking logic, resulting in decoupled code that was easier to test. 
